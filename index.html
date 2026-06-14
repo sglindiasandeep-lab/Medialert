@@ -35,13 +35,12 @@
   .date-chip{background:var(--surface2);border:1px solid rgba(255,255,255,0.18);border-radius:20px;padding:5px 13px;font-size:16px;color:var(--text);font-weight:600;letter-spacing:0.2px}
 
   /* PERSON STRIP */
-  .person-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
-  .person-strip::-webkit-scrollbar{display:none}
-  .person-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface2);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.2s;flex-shrink:0}
+  .person-strip{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:2px}
+  .person-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface2);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.2s}
   .person-pill.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
   .person-pill .ava{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
-  .add-person-pill{display:flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:50%;border:2.5px dashed #00CFFF;background:rgba(0,207,255,0.07);cursor:pointer;color:#00CFFF;font-size:36px;line-height:1;transition:all 0.2s;flex-shrink:0}
-  .add-person-pill:hover{border-color:#00FFFF;color:#00FFFF;background:rgba(0,255,255,0.13)}
+  .add-person-pill{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:2.5px dashed #00CFFF;background:rgba(0,207,255,0.07);cursor:pointer;color:#00CFFF;font-size:22px;line-height:1;transition:all 0.2s}
+  .add-person-pill:hover{border-color:#00FFFF;color:#00FFFF;background:rgba(0,255,255,0.13);transform:scale(1.1)}
 
   /* BOTTOM NAV */
   .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,15,30,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:8px 0 20px;z-index:100}
@@ -1088,7 +1087,11 @@ function renderStrip(){
       <div class="ava pc-${p.ci}">${P_EMOJIS[p.ci%5]}</div>${p.name.split(' ')[0]}
     </div>`;
   });
-  if(persons.length<5)h+=`<div class="add-person-pill" onclick="openAddModal()">+</div>`;
+  if(persons.length<5){
+    h+=`<div class="add-person-pill" onclick="openAddModal()" title="Add member">+</div>`;
+  } else {
+    h+=`<div class="add-person-pill add-person-pill--full" title="Maximum 5 members reached" style="opacity:0.35;cursor:not-allowed;border-color:#888;color:#888;background:transparent;">+</div>`;
+  }
   document.getElementById('personStrip').innerHTML=h;
 }
 
