@@ -711,6 +711,16 @@
     <input type="hidden" id="medDose">
     <div class="form-row">
       <div>
+        <label class="form-label">Start Date</label>
+        <input type="date" class="form-input" id="medStartDate">
+      </div>
+      <div>
+        <label class="form-label">Total Pills <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input type="number" min="1" class="form-input" id="medTotalPills" placeholder="e.g. 30">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
         <label class="form-label">Duration</label>
         <select class="form-select" id="medDuration" onchange="onDurationChange(this,'')">
           <option value="ongoing">Daily (ongoing)</option><option value="alternate">Alternate Days</option><option value="weekly">Weekly</option>
@@ -949,6 +959,16 @@
     <input type="hidden" id="editMedDose">
     <div class="form-row">
       <div>
+        <label class="form-label">Start Date</label>
+        <input type="date" class="form-input" id="editMedStartDate">
+      </div>
+      <div>
+        <label class="form-label">Total Pills <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input type="number" min="1" class="form-input" id="editMedTotalPills" placeholder="e.g. 30">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
         <label class="form-label">Duration</label>
         <select class="form-select" id="editMedDuration" onchange="onDurationChange(this,'edit')">
           <option value="ongoing">Daily (ongoing)</option>
@@ -1048,21 +1068,96 @@ function isActive(m){
   return new Date(todayStr()+'T00:00:00')<=e;
 }
 
-// Should this medicine appear TODAY (handles alternate/weekly logic)
-function isDueToday(m){
-  if(!isActive(m)) return false;
+// Parse the leading number out of a dosage string, e.g. "2 Tablets" -> 2, "5 ml" -> 5, "1 Drop (Eye)" -> 1
+function dosageUnits(dosage){
+  if(!dosage) return 1;
+  const m=String(dosage).match(/^([\d.]+)/);
+  return m?parseFloat(m[1])||1:1;
+}
+
+// Is the medicine due on a given yyyy-mm-dd date string, anchored to its startDate (mirrors isDueToday)
+function isDueOnDate(m,dateStr){
+  const s=new Date(m.startDate+'T00:00:00');
+  const t=new Date(dateStr+'T00:00:00');
+  if(t<s) return false; // never due before the start date
   if(m.duration==='alternate'){
-    // Alternate from startDate: day 0=yes, day 1=no, day 2=yes ...
-    const s=new Date(m.startDate+'T00:00:00');
-    const t=new Date(todayStr()+'T00:00:00');
-    const diff=Math.round((t-s)/(86400000));
-    return diff % 2 === 0;
+    const diff=Math.round((t-s)/86400000);
+    return diff%2===0;
   }
   if(m.duration==='weekly'){
-    const dow=new Date(todayStr()+'T00:00:00').getDay(); // 0=Sun
+    const dow=t.getDay();
     return m.weekDays && m.weekDays.includes(dow);
   }
-  return true;
+  if(m.duration==='ongoing') return true;
+  // fixed-length course
+  const e=new Date(s);e.setDate(e.getDate()+parseInt(m.duration)-1);
+  return t<=e;
+}
+
+// Generate the next N reminder dates (yyyy-mm-dd) for a medicine, starting from its startDate.
+// Always anchored to startDate, even if startDate is in the future.
+function getReminderDates(m,count){
+  const out=[];
+  let cur=new Date(m.startDate+'T00:00:00');
+  const hardStop=new Date(cur);hardStop.setDate(hardStop.getDate()+3650); // 10yr safety cap
+  while(out.length<count && cur<=hardStop){
+    const ds=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+    if(isDueOnDate(m,ds)) out.push(ds);
+    else if(m.duration!=='alternate' && m.duration!=='weekly' && m.duration!=='ongoing' && out.length>0) break; // fixed course ended
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+
+// How many doses per day this medicine is taken (number of time slots)
+function dosesPerDay(m){ return (m.times && m.times.length) || 1; }
+
+// Units consumed per single dose-taking event
+function unitsPerDose(m){ return dosageUnits(m.dosage); }
+
+// Total pills/units consumed so far for a medicine, based on actual "taken" history (not just scheduled days)
+function getConsumedUnits(pid,med){
+  const hist=getHist(pid);
+  const n=hist.filter(h=>h.medId===med.id).length;
+  return n*unitsPerDose(med);
+}
+
+// Remaining units, given totalPills set on the medicine. Returns null if no pill count is tracked.
+function getRemainingUnits(pid,med){
+  if(!med.totalPills) return null;
+  const consumed=getConsumedUnits(pid,med);
+  return Math.max(0, med.totalPills - consumed);
+}
+
+// Estimate the date the pill supply runs out, based on scheduled due-dates going forward and remaining units.
+function getEstimatedCompletionDate(pid,med){
+  const remaining=getRemainingUnits(pid,med);
+  if(remaining===null) return null;
+  if(remaining<=0) return todayStr();
+  const perDoseEvent=unitsPerDose(med);
+  const perDay=dosesPerDay(med)*perDoseEvent;
+  if(perDay<=0) return null;
+  // Walk forward day by day (capped) counting only scheduled days until units run out
+  let unitsLeft=remaining;
+  let cur=new Date(todayStr()+'T00:00:00');
+  const cap=new Date(cur);cap.setDate(cap.getDate()+3650);
+  let lastDate=todayStr();
+  while(cur<=cap){
+    const ds=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+    if(isDueOnDate(med,ds)){
+      unitsLeft-=perDay;
+      lastDate=ds;
+      if(unitsLeft<=0) return ds;
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return lastDate;
+}
+
+// Should this medicine appear TODAY (handles alternate/weekly logic, and future start dates)
+function isDueToday(m){
+  if(!isActive(m)) return false;
+  return isDueOnDate(m,todayStr());
 }
 function getAP(){return persons.find(p=>p.id===activePid)||persons[0]||null}
 
@@ -1159,9 +1254,12 @@ function renderToday(){
 
     const buildCard=(med,isTk)=>{
       const ci=med.colorIndex%8;
+      const remaining=med.totalPills?getRemainingUnits(p.id,med):null;
+      const lowStock=remaining!==null&&remaining<=(dosesPerDay(med)*unitsPerDose(med)*3);
+      const remainingHtml=remaining!==null?`<div class="med-dose-detail" style="color:${lowStock?'#f87171':'var(--text3)'};font-size:10px;margin-top:1px">${lowStock?'⚠️':'💊'} ${remaining} pill${remaining!==1?'s':''} left</div>`:'';
       return `<div class="med-dose-card ${isTk?'taken':''}">
         <div class="med-icon color-${ci}">${MED_ICONS[ci]}</div>
-        <div class="med-info"><div class="med-name">${med.name}</div><div class="med-dose-detail">${med.dosage} · ${med.food}</div><div class="med-dose-detail" style="color:var(--accent);font-size:10px;margin-top:2px">&#128197; Due: ${formatFullDate(todayStr())}</div></div>
+        <div class="med-info"><div class="med-name">${med.name}</div><div class="med-dose-detail">${med.dosage} · ${med.food}</div><div class="med-dose-detail" style="color:var(--accent);font-size:10px;margin-top:2px">&#128197; Due: ${formatFullDate(todayStr())}</div>${remainingHtml}</div>
         <button onclick="openEditDose('${p.id}','${med.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:8px;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button onclick="deleteTodayMed('${p.id}','${med.id}','${med.name.replace(/'/g,"\'")}','${slot.label}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:8px;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
         <div class="check-btn ${isTk?'done':''}" onclick="toggleDose('${p.id}','${med.id}','${slot.id}','${med.name.replace(/'/g,"\'")}','${slot.label}')">
@@ -1451,6 +1549,10 @@ function addMedicine(){
   if(duration==='weekly'&&weekDays.length===0){showToast('⚠️ Select at least one day for weekly');return;}
   const food=document.getElementById('medFood').value;
   const notes='';
+  const startDateInput=document.getElementById('medStartDate').value;
+  const startDate=startDateInput||todayStr();
+  const totalPillsRaw=document.getElementById('medTotalPills').value;
+  const totalPills=totalPillsRaw?parseFloat(totalPillsRaw):null;
   // Collect selected slots with their chosen sub-times
   const selectedChips=[...document.querySelectorAll('#timeChips .time-chip.selected')];
   const times=selectedChips.map(c=>c.dataset.val);
@@ -1464,9 +1566,11 @@ function addMedicine(){
   if(!times.length){showToast('⚠️ Select at least one time');return}
   let meds=getMeds(p.id);
   if(meds.length>=30){showToast('⚠️ Max 30 medicines reached');return}
-  meds.push({id:'med_'+Date.now(),name,dosage,duration,weekDays,food,notes,times,slotTimes,startDate:todayStr(),colorIndex:meds.length,addedAt:Date.now()});
+  meds.push({id:'med_'+Date.now(),name,dosage,duration,weekDays,food,notes,times,slotTimes,startDate,totalPills,colorIndex:meds.length,addedAt:Date.now()});
   setMeds(p.id,meds);
   document.getElementById('medName').value='';
+  document.getElementById('medStartDate').value='';
+  document.getElementById('medTotalPills').value='';
   // reset dosage type to tablet default
   setDoseType('tablet','');
   document.querySelectorAll('#timeChips .time-chip').forEach(c=>c.classList.remove('selected'));
@@ -1482,6 +1586,8 @@ function deleteMed(pid,id){
 
 function renderRx(){
   const p=getAP();
+  const sdInput=document.getElementById('medStartDate');
+  if(sdInput && !sdInput.value) sdInput.value=todayStr();
   document.getElementById('rxPersonName').textContent=p?p.name:'—';
   if(!p){
     document.getElementById('statTotal').textContent=0;document.getElementById('statActive').textContent=0;document.getElementById('statDoses').textContent=0;
@@ -1512,20 +1618,42 @@ function renderRx(){
       }
       else dur=med.duration+' days · Started '+formatFullDate(med.startDate);
       const tl=med.times.map(t=>{const s=SLOTS.find(x=>x.id===t);const tm=med.slotTimes?.[t]||s?.time||'';return s?s.icon+' '+s.label+(tm?' ('+tm+')':''):t}).join(', ');
-      return`<div class="med-list-item" style="opacity:${act?1:0.5}">
-        <div class="med-list-icon color-${ci}">${MED_ICONS[ci]}</div>
-        <div class="med-list-info">
-          <div class="med-list-name">${med.name} ${act?'':'<span style="color:var(--red);font-size:10px">(Done)</span>'}</div>
-          <div class="med-list-detail">${med.dosage} · ${med.food}<br>${tl}<br>${dur}</div>
+      // Pill tracking display
+      let pillTrackHtml='';
+      if(med.totalPills){
+        const consumed=getConsumedUnits(p.id,med);
+        const remaining=getRemainingUnits(p.id,med);
+        const pct=Math.min(100,Math.round((consumed/med.totalPills)*100));
+        const low=remaining!==null&&remaining<=(dosesPerDay(med)*unitsPerDose(med)*3); // less than ~3 days left
+        const eta=getEstimatedCompletionDate(p.id,med);
+        pillTrackHtml=`<div style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:10px;border:1px solid ${low?'rgba(248,113,113,0.4)':'var(--border)'}">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px">
+            <span>💊 ${consumed} used / ${med.totalPills} total</span>
+            <span style="color:${low?'#f87171':'var(--accent)'};font-weight:700">${remaining} left</span>
+          </div>
+          <div style="height:5px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${low?'#f87171':'var(--accent)'};border-radius:4px"></div>
+          </div>
+          ${eta?`<div style="font-size:10.5px;color:var(--text3);margin-top:5px">📅 Est. completion: ${formatFullDate(eta)}</div>`:''}
+        </div>`;
+      }
+      return`<div class="med-list-item" style="opacity:${act?1:0.5};flex-direction:column;align-items:stretch">
+        <div style="display:flex;align-items:flex-start;gap:11px">
+          <div class="med-list-icon color-${ci}">${MED_ICONS[ci]}</div>
+          <div class="med-list-info">
+            <div class="med-list-name">${med.name} ${act?'':'<span style="color:var(--red);font-size:10px">(Done)</span>'}</div>
+            <div class="med-list-detail">${med.dosage} · ${med.food}<br>${tl}<br>${dur}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+            <button class="edit-med-btn" onclick="openEditDose('${p.id}','${med.id}')" title="Edit medicine">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="delete-btn" onclick="deleteMed('${p.id}','${med.id}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
-          <button class="edit-med-btn" onclick="openEditDose('${p.id}','${med.id}')" title="Edit medicine">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="delete-btn" onclick="deleteMed('${p.id}','${med.id}')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>
-        </div>
+        ${pillTrackHtml}
       </div>`;
     }).join('');
   }
@@ -1723,6 +1851,8 @@ function openEditDose(pid, medId){
   }
   document.getElementById('editMedFood').value = med.food;
   document.getElementById('editMedNotes').value = med.notes||'';
+  document.getElementById('editMedStartDate').value = med.startDate||todayStr();
+  document.getElementById('editMedTotalPills').value = med.totalPills||'';
   ['morning','afternoon','evening','night'].forEach(function(sid){
     var chip=document.querySelector('#edit_wrap_'+sid+' .time-chip');
     var wrap=document.getElementById('edit_wrap_'+sid);
@@ -1754,7 +1884,10 @@ function saveEditedMed(){
     }
   });
   if(!editTimes.length){showToast('⚠️ Select at least one time');return;}
-  meds[idx]={...meds[idx],name,dosage,times:editTimes,slotTimes:editSlotTimes,
+  const editStartDate=document.getElementById('editMedStartDate').value||meds[idx].startDate||todayStr();
+  const editTotalPillsRaw=document.getElementById('editMedTotalPills').value;
+  const editTotalPills=editTotalPillsRaw?parseFloat(editTotalPillsRaw):null;
+  meds[idx]={...meds[idx],name,dosage,times:editTimes,slotTimes:editSlotTimes,startDate:editStartDate,totalPills:editTotalPills,
     duration: document.getElementById('editMedDuration').value,
     weekDays: document.getElementById('editMedDuration').value==='weekly'
       ? [...document.querySelectorAll('#editWeeklyDaysRow .day-chip.selected')].map(function(c){return parseInt(c.dataset.day);})
