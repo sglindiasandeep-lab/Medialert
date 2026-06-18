@@ -723,9 +723,19 @@
       <div>
         <label class="form-label">Duration</label>
         <select class="form-select" id="medDuration" onchange="onDurationChange(this,'')">
-          <option value="ongoing">Daily (ongoing)</option><option value="alternate">Alternate Days</option><option value="weekly">Weekly</option>
-          <option value="3">3 days</option><option value="5">5 days</option><option value="7">7 days</option><option value="10">10 days</option>
-          <option value="14">14 days</option><option value="21">21 days</option><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option>
+          <optgroup label="Frequency (repeats forever)">
+            <option value="ongoing">Daily (ongoing)</option>
+            <option value="alternate">Every 2 days (alternate)</option>
+            <option value="every3">Every 3 days</option>
+            <option value="every5">Every 5 days</option>
+            <option value="every7">Every 7 days</option>
+            <option value="every10">Every 10 days</option>
+            <option value="weekly">Weekly (pick days)</option>
+          </optgroup>
+          <optgroup label="Fixed course (daily, then stops)">
+            <option value="3">3 days</option><option value="5">5 days</option><option value="7">7 days</option><option value="10">10 days</option>
+            <option value="14">14 days</option><option value="21">21 days</option><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option>
+          </optgroup>
         </select>
       </div>
       <div>
@@ -971,14 +981,22 @@
       <div>
         <label class="form-label">Duration</label>
         <select class="form-select" id="editMedDuration" onchange="onDurationChange(this,'edit')">
-          <option value="ongoing">Daily (ongoing)</option>
-          <option value="alternate">Alternate Days</option>
-          <option value="weekly">Weekly</option>
-          <option value="3">3 days</option><option value="5">5 days</option>
-          <option value="7">7 days</option><option value="10">10 days</option>
-          <option value="14">14 days</option><option value="21">21 days</option>
-          <option value="30">30 days</option><option value="60">60 days</option>
-          <option value="90">90 days</option>
+          <optgroup label="Frequency (repeats forever)">
+            <option value="ongoing">Daily (ongoing)</option>
+            <option value="alternate">Every 2 days (alternate)</option>
+            <option value="every3">Every 3 days</option>
+            <option value="every5">Every 5 days</option>
+            <option value="every7">Every 7 days</option>
+            <option value="every10">Every 10 days</option>
+            <option value="weekly">Weekly (pick days)</option>
+          </optgroup>
+          <optgroup label="Fixed course (daily, then stops)">
+            <option value="3">3 days</option><option value="5">5 days</option>
+            <option value="7">7 days</option><option value="10">10 days</option>
+            <option value="14">14 days</option><option value="21">21 days</option>
+            <option value="30">30 days</option><option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </optgroup>
         </select>
       </div>
       <div id="editWeeklyDaysWrap" class="weekly-days-wrap" style="grid-column:1/-1">
@@ -1059,9 +1077,15 @@ function setHist(pid,v){setData(pKey('hist',pid),v)}
 function todayStr(){const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function formatDate(ds){const d=new Date(ds+'T00:00:00');return d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
 function formatFullDate(ds){const d=new Date(ds+'T00:00:00');return d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}
+// Returns the interval-in-days for "every N days" cadences, or null if not that type
+function everyNInterval(duration){
+  if(duration==='alternate') return 2;
+  const m=/^every(\d+)$/.exec(duration||'');
+  return m ? parseInt(m[1]) : null;
+}
 function isActive(m){
   if(m.duration==='ongoing')return true;
-  if(m.duration==='alternate')return true;
+  if(everyNInterval(m.duration)!==null)return true;
   if(m.duration==='weekly')return true;
   const s=new Date(m.startDate+'T00:00:00'),e=new Date(s);
   e.setDate(e.getDate()+parseInt(m.duration)-1);
@@ -1080,9 +1104,10 @@ function isDueOnDate(m,dateStr){
   const s=new Date(m.startDate+'T00:00:00');
   const t=new Date(dateStr+'T00:00:00');
   if(t<s) return false; // never due before the start date
-  if(m.duration==='alternate'){
+  const interval=everyNInterval(m.duration);
+  if(interval!==null){
     const diff=Math.round((t-s)/86400000);
-    return diff%2===0;
+    return diff%interval===0;
   }
   if(m.duration==='weekly'){
     const dow=t.getDay();
@@ -1103,7 +1128,7 @@ function getReminderDates(m,count){
   while(out.length<count && cur<=hardStop){
     const ds=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
     if(isDueOnDate(m,ds)) out.push(ds);
-    else if(m.duration!=='alternate' && m.duration!=='weekly' && m.duration!=='ongoing' && out.length>0) break; // fixed course ended
+    else if(everyNInterval(m.duration)===null && m.duration!=='weekly' && m.duration!=='ongoing' && out.length>0) break; // fixed course ended
     cur.setDate(cur.getDate()+1);
   }
   return out;
@@ -1611,12 +1636,13 @@ function renderRx(){
       const ci=med.colorIndex%8,act=isActive(med);
       var dur;
       if(med.duration==='ongoing') dur='Daily (ongoing) · Started '+formatFullDate(med.startDate);
-      else if(med.duration==='alternate') dur='Every other day · Started '+formatFullDate(med.startDate);
+      else if(med.duration==='alternate') dur='Every 2 days · Started '+formatFullDate(med.startDate);
+      else if(/^every\d+$/.test(med.duration)) dur='Every '+med.duration.replace('every','')+' days · Started '+formatFullDate(med.startDate);
       else if(med.duration==='weekly'){
         const dnames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         dur='Weekly on '+(med.weekDays&&med.weekDays.length?med.weekDays.map(function(d){return dnames[d];}).join(', '):'—')+' · Started '+formatFullDate(med.startDate);
       }
-      else dur=med.duration+' days · Started '+formatFullDate(med.startDate);
+      else dur='Course: '+med.duration+' days (daily) · Started '+formatFullDate(med.startDate);
       const tl=med.times.map(t=>{const s=SLOTS.find(x=>x.id===t);const tm=med.slotTimes?.[t]||s?.time||'';return s?s.icon+' '+s.label+(tm?' ('+tm+')':''):t}).join(', ');
       // Pill tracking display
       let pillTrackHtml='';
