@@ -1140,11 +1140,24 @@ function dosesPerDay(m){ return (m.times && m.times.length) || 1; }
 // Units consumed per single dose-taking event
 function unitsPerDose(m){ return dosageUnits(m.dosage); }
 
-// Total pills/units consumed so far for a medicine, based on actual "taken" history (not just scheduled days)
+// Total pills/units permanently consumed so far for a medicine.
+// This is stored on the medicine itself (med.consumedUnits) rather than derived from
+// the live history list, so that deleting history entries (Clear History) does NOT
+// restore pill counts. Once a dose is marked taken, those units are deducted for good.
 function getConsumedUnits(pid,med){
-  const hist=getHist(pid);
-  const n=hist.filter(h=>h.medId===med.id).length;
-  return n*unitsPerDose(med);
+  return med.consumedUnits||0;
+}
+
+// Permanently add (or subtract, with a negative delta) to a medicine's consumed-units counter.
+// Subtracting is only ever done when un-marking *today's* dose immediately after marking it
+// (a same-session correction), never as a side effect of deleting history.
+function adjustConsumedUnits(pid,medId,delta){
+  const meds=getMeds(pid);
+  const idx=meds.findIndex(m=>m.id===medId);
+  if(idx===-1)return;
+  const cur=meds[idx].consumedUnits||0;
+  meds[idx]={...meds[idx],consumedUnits:Math.max(0,cur+delta)};
+  setMeds(pid,meds);
 }
 
 // Remaining units, given totalPills set on the medicine. Returns null if no pill count is tracked.
@@ -1358,13 +1371,16 @@ function toggleDose(pid,medId,slotId,medName,slotName){
   const key=`${medId}_${slotId}`;
   const was=!!taken[today][key];
   let hist=getHist(pid);
+  const med=getMeds(pid).find(m=>m.id===medId);
   if(!was){
     taken[today][key]=true;
     hist.push({date:today,medId,medName,slotId,slotName,time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),ts:Date.now()});
+    if(med&&med.totalPills)adjustConsumedUnits(pid,medId,unitsPerDose(med));
     showToast(`✅ ${medName} marked taken`);
   }else{
     delete taken[today][key];
     hist=hist.filter(h=>!(h.date===today&&h.medId===medId&&h.slotId===slotId));
+    if(med&&med.totalPills)adjustConsumedUnits(pid,medId,-unitsPerDose(med));
     showToast(`↩️ ${medName} unmarked`);
   }
   setTaken(pid,taken);setHist(pid,hist);renderToday();
@@ -1591,7 +1607,7 @@ function addMedicine(){
   if(!times.length){showToast('⚠️ Select at least one time');return}
   let meds=getMeds(p.id);
   if(meds.length>=30){showToast('⚠️ Max 30 medicines reached');return}
-  meds.push({id:'med_'+Date.now(),name,dosage,duration,weekDays,food,notes,times,slotTimes,startDate,totalPills,colorIndex:meds.length,addedAt:Date.now()});
+  meds.push({id:'med_'+Date.now(),name,dosage,duration,weekDays,food,notes,times,slotTimes,startDate,totalPills,consumedUnits:0,colorIndex:meds.length,addedAt:Date.now()});
   setMeds(p.id,meds);
   document.getElementById('medName').value='';
   document.getElementById('medStartDate').value='';
