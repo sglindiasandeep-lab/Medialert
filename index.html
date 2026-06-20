@@ -1866,7 +1866,10 @@ function confirmClearHistory(){
   const delBP  = document.getElementById('clearBPHist').checked;
   const targets = histFilterPid==='all' ? persons : persons.filter(p=>p.id===histFilterPid);
   targets.forEach(p=>{
-    if(delMed){ setHist(p.id,[]); setTaken(p.id,{}); }
+    // Clearing history permanently deletes the history LOG only. It must never touch
+    // `taken`, which is the durable record of which doses were actually completed today —
+    // wiping it would make completed meds reappear as pending in the Today tab.
+    if(delMed){ setHist(p.id,[]); }
     if(delBP)  setBP(p.id,[]);
   });
   closeModal('clearHistoryModal');
