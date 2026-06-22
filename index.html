@@ -557,6 +557,25 @@
   }
   .slot-all-done-arrow { margin-left:auto; transition:transform 0.2s; }
   .slot-all-done-arrow.open { transform:rotate(180deg); }
+
+  /* WEIGHT TAB */
+  .save-weight-btn{width:100%;padding:12px;background:var(--amber);color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:opacity 0.2s}
+  .save-weight-btn:active{opacity:0.8}
+  .weight-stat-strip{display:flex;gap:8px;margin-bottom:2px;overflow-x:auto;padding-bottom:2px}
+  .weight-stat-card{flex:1;min-width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;text-align:center}
+  .weight-stat-val{font-size:18px;font-weight:700;color:var(--amber);font-family:'Fraunces',serif}
+  .weight-stat-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-top:2px}
+  .weight-entry{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:8px}
+  .weight-entry-icon{width:36px;height:36px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .weight-entry-info{flex:1;min-width:0}
+  .weight-entry-val{font-size:17px;font-weight:700;color:var(--text)}
+  .weight-entry-meta{font-size:11px;color:var(--text2);margin-top:2px}
+  .weight-delta-up{color:var(--red);font-size:12px;font-weight:700}
+  .weight-delta-down{color:var(--accent);font-size:12px;font-weight:700}
+  .weight-delta-same{color:var(--text2);font-size:12px;font-weight:700}
+  .weight-delete-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:6px;transition:color 0.2s;flex-shrink:0}
+  .weight-delete-btn:hover{color:var(--red)}
+
 </style>
 </head>
 <body>
@@ -645,6 +664,54 @@
   </button>
   <div class="accordion-panel" id="bpHistPanel">
     <div id="bpHistoryList"><div class="empty-state" style="padding:20px"><div class="empty-icon">💓</div><p>No readings yet.</p></div></div>
+  </div>
+</div>
+
+<!-- WEIGHT -->
+<div class="page" id="page-weight">
+  <div style="height:8px"></div>
+  <div class="person-indicator" style="margin-bottom:12px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 10h10M7 7h4"/></svg>
+    Weight for <strong id="weightPersonLabel">—</strong>
+    <span id="weightLatestBadge" style="margin-left:auto;background:var(--amber-soft);border:1px solid rgba(251,191,36,0.3);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--amber);font-weight:600">—</span>
+  </div>
+  <div id="weightStatStrip" style="margin-bottom:10px"></div>
+  <button class="accordion-btn" id="weightLogBtn" onclick="toggleAccordion('weightLog','weightLogBtn')">
+    <span class="accordion-btn-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Log Weight
+    </span>
+    <svg class="accordion-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  <div class="accordion-panel" id="weightLog">
+    <div class="bp-inputs" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+      <div class="bp-field">
+        <label>Weight</label>
+        <input type="number" id="weightVal" placeholder="70.0" min="10" max="300" step="0.1">
+      </div>
+      <div class="bp-field">
+        <label>Unit</label>
+        <select id="weightUnit" class="form-select" style="margin-bottom:0;font-size:14px">
+          <option value="kg">kg</option>
+          <option value="lbs">lbs</option>
+        </select>
+      </div>
+    </div>
+    <div class="bp-field" style="margin-bottom:10px">
+      <label>Notes (optional)</label>
+      <input type="text" id="weightNote" placeholder="e.g. After breakfast" maxlength="60" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 10px;outline:none;transition:border-color 0.2s">
+    </div>
+    <button class="save-weight-btn" onclick="saveWeight()">Save Weight</button>
+  </div>
+  <button class="accordion-btn" id="weightHistBtn" onclick="toggleAccordion('weightHistPanel','weightHistBtn')">
+    <span class="accordion-btn-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Weight History
+    </span>
+    <svg class="accordion-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  <div class="accordion-panel" id="weightHistPanel">
+    <div id="weightHistoryList"><div class="empty-state" style="padding:20px"><div class="empty-icon">⚖️</div><p>No entries yet.</p></div></div>
   </div>
 </div>
 <!-- PRESCRIPTION -->
@@ -856,6 +923,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
     <span>BP</span>
   </button>
+  <button class="nav-btn" id="nav-weight" onclick="showPage('weight')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12a2 2 0 012 2v2H4V6a2 2 0 012-2z"/><rect x="2" y="8" width="20" height="12" rx="2"/><path d="M12 12v4M9 14h6"/></svg>
+    <span>Weight</span>
+  </button>
   <button class="nav-btn" id="nav-rx" onclick="showPage('rx')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
     <span>Rx</span>
@@ -914,9 +985,13 @@
       <input type="checkbox" id="clearMedHist" checked style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
       <span style="font-size:14px;font-weight:500">💊 Medication dose history</span>
     </label>
-    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border-radius:10px;margin-bottom:16px;cursor:pointer">
+    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border-radius:10px;margin-bottom:8px;cursor:pointer">
       <input type="checkbox" id="clearBPHist" checked style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
       <span style="font-size:14px;font-weight:500">💓 Blood pressure readings</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border-radius:10px;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="clearWeightHist" checked style="width:18px;height:18px;accent-color:var(--amber);cursor:pointer">
+      <span style="font-size:14px;font-weight:500">⚖️ Body weight entries</span>
     </label>
     <p style="font-size:12px;color:var(--text3);margin-bottom:16px;text-align:center">Applies to: <strong id="clearHistScope" style="color:var(--text2)"></strong></p>
     <button class="modal-btn modal-btn-danger" onclick="confirmClearHistory()">Delete Selected History</button>
@@ -1066,6 +1141,8 @@ let editingMid=null, deletingMid=null, histFilterPid='all';
 
 function pKey(t,pid){return`mc_${t}_${pid}`}
 function getMeds(pid){return getData(pKey('meds',pid),[])}
+function getWeight(pid){return getData(pKey('wt',pid),[])}
+function setWeight(pid,v){setData(pKey('wt',pid),v)}
 function getBP(pid){return getData(pKey('bp',pid),[])}
 function getTaken(pid){return getData(pKey('taken',pid),{})}
 function getHist(pid){return getData(pKey('hist',pid),[])}
@@ -1207,6 +1284,7 @@ function showPage(id){
   document.getElementById('nav-'+id).classList.add('active');
   if(id==='today')renderToday();
   if(id==='bp')renderBP();
+  if(id==='weight')renderWeight();
   if(id==='rx')renderRx();
   if(id==='history')renderHistory();
   if(id==='family')renderFamily();
@@ -1436,6 +1514,95 @@ function spo2Status(v){
   if(v>=95) return {label:'Normal',color:'#4ade80',bg:'var(--accent-soft)'};
   if(v>=90) return {label:'Low',   color:'#fbbf24',bg:'var(--amber-soft)'};
   return           {label:'Critical',color:'#f87171',bg:'var(--red-soft)'};
+}
+
+
+// ===== WEIGHT =====
+function saveWeight(){
+  var p=getAP();
+  if(!p){showToast('⚠️ Select a person first');return;}
+  var val=parseFloat(document.getElementById('weightVal').value);
+  if(isNaN(val)||val<10||val>300){showToast('⚠️ Enter a valid weight');return;}
+  var unit=document.getElementById('weightUnit').value;
+  var note=document.getElementById('weightNote').value.trim();
+  var today=todayStr();
+  var wt=getWeight(p.id);
+  // allow only one entry per day — overwrite if same day
+  wt=wt.filter(function(w){return w.date!==today;});
+  wt.unshift({id:Date.now(),date:today,val:val,unit:unit,note:note,ts:Date.now()});
+  setWeight(p.id,wt);
+  document.getElementById('weightVal').value='';
+  document.getElementById('weightNote').value='';
+  showToast('⚖️ Weight saved for '+p.name);
+  renderWeight();
+}
+
+function renderWeight(){
+  var p=getAP();
+  document.getElementById('weightPersonLabel').textContent=p?p.name:'No person selected';
+  if(!p){
+    document.getElementById('weightHistoryList').innerHTML='<div class="empty-state" style="padding:20px"><div class="empty-icon">👥</div><p>Add a family member first.</p></div>';
+    document.getElementById('weightLatestBadge').textContent='—';
+    document.getElementById('weightStatStrip').innerHTML='';
+    return;
+  }
+  var wt=getWeight(p.id);
+  // Badge: latest weight
+  if(wt.length){
+    document.getElementById('weightLatestBadge').textContent=wt[0].val+' '+wt[0].unit;
+  } else {
+    document.getElementById('weightLatestBadge').textContent='—';
+  }
+  // Stat strip: latest, change from last, total entries
+  var strip=document.getElementById('weightStatStrip');
+  if(wt.length){
+    var latest=wt[0];
+    var delta='—';
+    if(wt.length>1){
+      var d=(latest.val-wt[1].val);
+      delta=(d>=0?'+':'')+d.toFixed(1)+' '+latest.unit;
+    }
+    strip.innerHTML='<div class="weight-stat-strip">'
+      +'<div class="weight-stat-card"><div class="weight-stat-val">'+latest.val+'</div><div class="weight-stat-lbl">Latest ('+latest.unit+')</div></div>'
+      +'<div class="weight-stat-card"><div class="weight-stat-val" style="font-size:15px;color:'+(wt.length>1?(wt[1].val>latest.val?'var(--accent)':'var(--red)'):'var(--amber)')+'">'+delta+'</div><div class="weight-stat-lbl">vs Last Entry</div></div>'
+      +'<div class="weight-stat-card"><div class="weight-stat-val">'+wt.length+'</div><div class="weight-stat-lbl">Total Entries</div></div>'
+      +'</div>';
+  } else {
+    strip.innerHTML='';
+  }
+  // History list
+  if(!wt.length){
+    document.getElementById('weightHistoryList').innerHTML='<div class="empty-state" style="padding:20px"><div class="empty-icon">⚖️</div><p>No weight entries yet for '+p.name+'.</p></div>';
+    return;
+  }
+  var h='';
+  wt.forEach(function(w,i){
+    var delta='';
+    if(i<wt.length-1){
+      var d=w.val-wt[i+1].val;
+      var cls=d>0?'weight-delta-up':d<0?'weight-delta-down':'weight-delta-same';
+      var arrow=d>0?'▲':d<0?'▼':'—';
+      delta='<span class="'+cls+'">'+arrow+' '+Math.abs(d).toFixed(1)+' '+w.unit+'</span>';
+    }
+    h+='<div class="weight-entry">'
+      +'<div class="weight-entry-icon">⚖️</div>'
+      +'<div class="weight-entry-info">'
+      +'<div class="weight-entry-val">'+w.val+' '+w.unit+' '+delta+'</div>'
+      +'<div class="weight-entry-meta">'+formatDate(w.date)+(w.note?' · '+w.note:'')+'</div>'
+      +'</div>'
+      +'<button class="weight-delete-btn" onclick="deleteWeight(\''+p.id+'\','+w.id+')" title="Delete entry">'
+      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>'
+      +'</button>'
+      +'</div>';
+  });
+  document.getElementById('weightHistoryList').innerHTML=h;
+}
+
+function deleteWeight(pid,id){
+  var wt=getWeight(pid).filter(function(w){return w.id!==id;});
+  setWeight(pid,wt);
+  showToast('🗑️ Entry deleted');
+  renderWeight();
 }
 
 function renderBP(){
@@ -1719,6 +1886,7 @@ function renderHistory(){
     const meds=getMeds(p.id);
     getHist(p.id).forEach(h=>{events.push({type:'med',date:h.date,ts:h.ts,p,med:meds.find(m=>m.id===h.medId),h})});
     getBP(p.id).forEach(r=>{events.push({type:'bp',date:r.date,ts:r.ts,p,r})});
+    getWeight(p.id).forEach(w=>{events.push({type:'wt',date:w.date,ts:w.ts,p,w})});
   });
 
   const container=document.getElementById('historyContainer');
@@ -1741,6 +1909,14 @@ function renderHistory(){
             <div class="history-detail">${slot?.icon||''} ${e.h.slotName} · ${e.h.time}${multi?' · '+e.p.name:''}</div>
           </div>
           <div class="taken-badge">TAKEN</div>
+        </div>`;
+      }else if(e.type==='wt'){
+        html+=`<div class="history-item">
+          <div class="history-icon" style="background:var(--amber-soft)">⚖️</div>
+          <div class="history-info">
+            <div class="history-name">${e.w.val} ${e.w.unit}${e.w.note?' · '+e.w.note:''}</div>
+            <div class="history-detail">Body Weight${multi?' · '+e.p.name:''}</div>
+          </div>
         </div>`;
       }else{
         const st=bpStatus(e.r.sys,e.r.dia);
@@ -1859,11 +2035,13 @@ function openClearHistoryModal(){
   document.getElementById('clearHistScope').textContent = scope;
   document.getElementById('clearMedHist').checked = true;
   document.getElementById('clearBPHist').checked = true;
+  document.getElementById('clearWeightHist').checked = true;
   openModal('clearHistoryModal');
 }
 function confirmClearHistory(){
   const delMed = document.getElementById('clearMedHist').checked;
   const delBP  = document.getElementById('clearBPHist').checked;
+  const delWt  = document.getElementById('clearWeightHist').checked;
   const targets = histFilterPid==='all' ? persons : persons.filter(p=>p.id===histFilterPid);
   targets.forEach(p=>{
     // Clearing history permanently deletes the history LOG only. It must never touch
@@ -1871,6 +2049,7 @@ function confirmClearHistory(){
     // wiping it would make completed meds reappear as pending in the Today tab.
     if(delMed){ setHist(p.id,[]); }
     if(delBP)  setBP(p.id,[]);
+    if(delWt)  setWeight(p.id,[]);
   });
   closeModal('clearHistoryModal');
   showToast('🗑️ History cleared');
