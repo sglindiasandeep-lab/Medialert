@@ -84,8 +84,8 @@
   .med-dose-card.taken{background:var(--accent-soft);border-color:rgba(74,222,128,0.25)}
   .med-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
   .med-info{flex:1;min-width:0}
-  .med-name{font-size:14px;font-weight:600;color:var(--text)}
-  .med-dose-detail{font-size:11px;color:var(--text2);margin-top:2px}
+  .med-name{font-size:21px;font-weight:600;color:var(--text)}
+  .med-dose-detail{font-size:16.5px;color:var(--text2);margin-top:2px}
   .check-btn{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;flex-shrink:0}
   .check-btn.done{background:var(--accent);border-color:var(--accent)}
   .check-btn svg{width:14px;height:14px}
@@ -1372,11 +1372,11 @@ function renderToday(){
       const ci=med.colorIndex%8;
       const remaining=med.totalPills?getRemainingUnits(p.id,med):null;
       const lowStock=remaining!==null&&remaining<=(dosesPerDay(med)*unitsPerDose(med)*3);
-      const remainingHtml=remaining!==null?`<div class="med-dose-detail" style="color:${lowStock?'#f87171':'var(--text3)'};font-size:10px;margin-top:1px">${lowStock?'⚠️':'💊'} ${remaining} pill${remaining!==1?'s':''} left</div>`:'';
+      const remainingHtml=remaining!==null?`<div class="med-dose-detail" style="color:${lowStock?'#f87171':'#00cfff'};font-size:15px;font-weight:600;margin-top:1px">${lowStock?'⚠️':'💊'} ${remaining} pill${remaining!==1?'s':''} left</div>`:'';
       return `<div class="med-dose-card ${isTk?'taken':''}">
         <div class="med-icon color-${ci}">${MED_ICONS[ci]}</div>
-        <div class="med-info"><div class="med-name">${med.name}</div><div class="med-dose-detail">${med.dosage} · ${med.food}</div><div class="med-dose-detail" style="color:var(--accent);font-size:10px;margin-top:2px">&#128197; Due: ${formatFullDate(todayStr())}</div>${remainingHtml}</div>
-        <button onclick="openEditDose('${p.id}','${med.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:8px;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <div class="med-info"><div class="med-name">${med.name}</div><div class="med-dose-detail">${med.dosage} · ${med.food}</div><div class="med-dose-detail" style="color:var(--accent);font-size:15px;margin-top:2px">&#128197; Due: ${formatFullDate(todayStr())}</div>${remainingHtml}</div>
+        <button onclick="openEditDose('${p.id}','${med.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px 6px;border-radius:8px;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button onclick="deleteTodayMed('${p.id}','${med.id}','${med.name.replace(/'/g,"\'")}','${slot.label}')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:8px;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
         <div class="check-btn ${isTk?'done':''}" onclick="toggleDose('${p.id}','${med.id}','${slot.id}','${med.name.replace(/'/g,"\'")}','${slot.label}')">
           <svg viewBox="0 0 24 24" fill="none" stroke="${isTk?'#000':'var(--text3)'}" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
