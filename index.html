@@ -576,6 +576,24 @@
   .weight-delete-btn{background:none;border:none;color:var(--red);cursor:pointer;padding:4px;border-radius:6px;transition:color 0.2s;flex-shrink:0}
   .weight-delete-btn:hover{color:var(--red)}
 
+
+  /* ── WEIGHT TAB ──────────────────────────────────────────────────── */
+  .save-weight-btn{width:100%;padding:12px;background:var(--amber);color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:opacity 0.2s}
+  .save-weight-btn:active{opacity:0.8}
+  .weight-stat-strip{display:flex;gap:8px;margin-bottom:2px}
+  .weight-stat-card{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;text-align:center}
+  .weight-stat-val{font-size:18px;font-weight:700;color:var(--amber);font-family:'Fraunces',serif}
+  .weight-stat-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.6px;margin-top:2px}
+  .weight-entry{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:8px}
+  .weight-entry-icon{width:36px;height:36px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .weight-entry-info{flex:1;min-width:0}
+  .weight-entry-val{font-size:17px;font-weight:700;color:var(--text)}
+  .weight-entry-meta{font-size:11px;color:var(--text2);margin-top:2px}
+  .weight-delta-up{color:var(--red);font-size:12px;font-weight:700}
+  .weight-delta-down{color:var(--accent);font-size:12px;font-weight:700}
+  .weight-entry-del{background:none;border:none;color:var(--red);cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;transition:opacity 0.2s}
+  .weight-entry-del:active{opacity:0.6}
+
 </style>
 </head>
 <body>
@@ -714,6 +732,60 @@
     <div id="weightHistoryList"><div class="empty-state" style="padding:20px"><div class="empty-icon">⚖️</div><p>No entries yet.</p></div></div>
   </div>
 </div>
+
+<!-- WEIGHT -->
+<div class="page" id="page-weight">
+  <div style="height:8px"></div>
+
+  <div class="person-indicator" style="margin-bottom:12px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6 22v-2a6 6 0 0112 0v2"/><rect x="7" y="9" width="10" height="7" rx="2"/></svg>
+    Weight for <strong id="weightPersonLabel">—</strong>
+    <span id="weightLatestBadge" style="margin-left:auto;background:var(--amber-soft);border:1px solid rgba(251,191,36,0.3);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--amber);font-weight:600">—</span>
+  </div>
+
+  <div id="weightStatStrip" style="margin-bottom:10px"></div>
+
+  <button class="accordion-btn" id="weightLogBtn" onclick="toggleAccordion('weightLog','weightLogBtn')">
+    <span class="accordion-btn-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Log Weight
+    </span>
+    <svg class="accordion-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  <div class="accordion-panel" id="weightLog">
+    <div class="bp-inputs" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+      <div class="bp-field">
+        <label>Weight</label>
+        <input type="number" id="weightVal" placeholder="70.0" min="10" max="500" step="0.1">
+      </div>
+      <div class="bp-field">
+        <label>Unit</label>
+        <select id="weightUnit" class="form-select" style="margin-bottom:0;font-size:14px">
+          <option value="kg">kg</option>
+          <option value="lbs">lbs</option>
+        </select>
+      </div>
+    </div>
+    <div class="bp-field" style="margin-bottom:10px">
+      <label>Notes (optional)</label>
+      <input type="text" id="weightNote" placeholder="e.g. After breakfast" maxlength="60"
+        style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 10px;outline:none;transition:border-color 0.2s;box-sizing:border-box">
+    </div>
+    <button class="save-weight-btn" onclick="saveWeight()">Save Weight</button>
+  </div>
+
+  <button class="accordion-btn" id="weightHistBtn" onclick="toggleAccordion('weightHistPanel','weightHistBtn')" style="margin-top:10px">
+    <span class="accordion-btn-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Weight History
+    </span>
+    <svg class="accordion-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  <div class="accordion-panel" id="weightHistPanel">
+    <div id="weightHistoryList"><div class="empty-state" style="padding:20px"><div class="empty-icon">⚖️</div><p>No entries yet.</p></div></div>
+  </div>
+</div>
+
 <!-- PRESCRIPTION -->
 <div class="page" id="page-rx">
   <div style="height:8px"></div>
