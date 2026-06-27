@@ -2486,7 +2486,87 @@ function init(){
   document.addEventListener('touchstart', function(){ try{ if(!_actx) _actx=new(window.AudioContext||window.webkitAudioContext)(); _actx.resume(); }catch(e){} }, {once:true});
 
   renderStrip();renderToday();
-  if('Notification'in window)Notification.requestPermission();
+  // ── Notification permission + scheduled OS alerts ────────────────────────
+  // iOS 16.4+ supports Web Push when app is installed to home screen.
+  // We: (1) request permission, (2) schedule OS-level notifications via
+  // showNotification() on the SW registration so they fire even when the
+  // screen is locked or the app is backgrounded.
+  window._swReg = null;
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.ready.then(function(reg){
+      window._swReg = reg;
+    });
+  }
+
+  function requestNotifPermission(cb){
+    if(!('Notification' in window)){ if(cb) cb(false); return; }
+    if(Notification.permission === 'granted'){ if(cb) cb(true); return; }
+    if(Notification.permission === 'denied'){ if(cb) cb(false); return; }
+    Notification.requestPermission().then(function(p){ if(cb) cb(p==='granted'); });
+  }
+
+  // Schedule a native OS notification at an exact future time.
+  // Uses setTimeout internally — works while app is open / screen-on.
+  // On iOS PWA the app must be in foreground for this to fire; see note below.
+  function scheduleOSNotif(title, body, tag, delayMs){
+    if(delayMs < 0) return;
+    setTimeout(function(){
+      if(Notification.permission !== 'granted') return;
+      if(window._swReg){
+        // Preferred: via SW (works even if page is backgrounded on supporting platforms)
+        window._swReg.showNotification(title, {
+          body: body,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: tag,
+          renotify: true,
+          requireInteraction: true,
+          vibrate: [200, 100, 200, 100, 400],
+          data: { url: '/' }
+        }).catch(function(){
+          // Fallback: direct Notification API
+          new Notification(title, { body: body, icon: '/icon-192.png', tag: tag });
+        });
+      } else {
+        new Notification(title, { body: body, icon: '/icon-192.png', tag: tag });
+      }
+    }, delayMs);
+  }
+
+  // Schedule OS notifications for every due medicine today (called on load + day-rollover)
+  function scheduleTodayOSNotifs(){
+    if(Notification.permission !== 'granted') return;
+    var now = new Date();
+    var today = todayStr();
+    persons.forEach(function(p){
+      var meds = getMeds(p.id);
+      var taken = getTaken(p.id)[today] || {};
+      meds.forEach(function(med){
+        if(!isDueToday(med)) return;
+        med.slotTimes.forEach(function(slot){
+          var key = med.id + '_' + slot.id;
+          if(taken[key]) return; // already taken
+          // Parse slot time e.g. "08:30 AM"
+          var m = (slot.time||'').match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if(!m) return;
+          var h = parseInt(m[1]), min = parseInt(m[2]), ampm = m[3].toUpperCase();
+          if(ampm==='PM' && h!==12) h += 12;
+          if(ampm==='AM' && h===12) h = 0;
+          var due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, min, 0);
+          var delay = due - now;
+          if(delay < -5*60*1000) return; // skip if more than 5 min overdue already
+          var title = '💊 Time for ' + med.name;
+          var body  = med.dosage + (med.food?' · '+med.food:'') + ' — ' + p.name;
+          scheduleOSNotif(title, body, 'med_' + key, Math.max(0, delay));
+        });
+      });
+    });
+  }
+
+  // Request permission then schedule
+  requestNotifPermission(function(granted){
+    if(granted) scheduleTodayOSNotifs();
+  });
 
   // DATE CHANGE DETECTION
   // taken{} is keyed by date string, so a new day is always empty automatically.
@@ -2501,6 +2581,7 @@ function init(){
       renderToday();
       if(document.getElementById('page-bp').classList.contains('active')) renderBP();
       showToast('New day — medicines reset');
+      scheduleTodayOSNotifs();
     }
   }
 
@@ -2522,6 +2603,7 @@ function init(){
       // Small delay to let JS settle after wake
       setTimeout(checkMedicineReminders, 800);
       setTimeout(checkAppointmentAlerts, 1200);
+      setTimeout(scheduleTodayOSNotifs, 1000);
     }
   });
 
